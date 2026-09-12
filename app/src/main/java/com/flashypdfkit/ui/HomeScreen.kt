@@ -670,6 +670,21 @@ fun HomeScreen(
             }
         }
 
+        // --- UNITY ADS BANNER ---
+        if (!isPremium) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = AppSpacing.sm),
+                contentAlignment = Alignment.Center
+            ) {
+                com.flashypdfkit.ads.UnityBannerView(
+                    modifier = Modifier.size(320.dp, 50.dp)
+                )
+            }
+        }
+
         // --- 7. FOOTER ---
         Spacer(modifier = Modifier.height(32.dp))
         Text(

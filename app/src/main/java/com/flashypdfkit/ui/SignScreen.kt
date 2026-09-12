@@ -180,6 +180,42 @@ fun SignScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = AppSpacing.lg, vertical = AppSpacing.md)
         ) {
+            val userSettings = prefsHistory.getUserSettings()
+            if (!userSettings.isPremium) {
+                val uses = com.flashypdfkit.ads.UsageManager.getSignUses(context)
+                val extra = com.flashypdfkit.ads.UsageManager.getSignRewardedExtra(context)
+                val remaining = (com.flashypdfkit.ads.UsageManager.MAX_SIGN_FREE - uses).coerceAtLeast(0) + extra
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = AppSpacing.md),
+                    shape = RoundedCornerShape(AppRadius.md),
+                    colors = CardDefaults.cardColors(containerColor = surfaceMuted),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⚡ Free Tier Daily Limit",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = textMuted
+                        )
+                        Text(
+                            text = "$remaining uses remaining today",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ActivePalette.Primary
+                        )
+                    }
+                }
+            }
+
             // Step breadcrumbs card
             Card(
                 modifier = Modifier.fillMaxWidth(),

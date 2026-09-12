@@ -2,7 +2,7 @@
 <resources>
     <style name="Theme.FlashyPDFKit" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#0F1117</item>
-        <item name="windowSplashScreenAnimatedIcon">@android:drawable/ic_menu_agenda</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_icon</item>
         <item name="postSplashScreenTheme">@style/Theme.FlashyPDFKit.Normal</item>
     </style>
 

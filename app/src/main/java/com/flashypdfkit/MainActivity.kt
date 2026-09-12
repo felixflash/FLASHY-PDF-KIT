@@ -120,6 +120,7 @@ class MainActivity : ComponentActivity() {
 
         prefsHistory = PreferencesAndHistory(this)
         billingManager = BillingManager(this, prefsHistory)
+        com.flashypdfkit.ads.UnityAdsManager.initialize(this)
 
         // Handle incoming PDF intent if opened from external app
         if (intent?.action == Intent.ACTION_VIEW && intent.type == "application/pdf") {
@@ -133,6 +134,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             var userSettings by remember { mutableStateOf(prefsHistory.getUserSettings()) }
             var showPremiumModal by remember { mutableStateOf(false) }
+            var pendingToolForAd by remember { mutableStateOf<PdfToolType?>(null) }
+            var showRewardedAdModal by remember { mutableStateOf<PdfToolType?>(null) }
             var recentFilesList by remember { mutableStateOf(prefsHistory.getRecentFiles()) }
 
             val isPremiumOwned by billingManager.isPremiumOwned.collectAsState()
@@ -186,8 +189,43 @@ class MainActivity : ComponentActivity() {
                             null -> HomeScreen(
                                 isPremium = userSettings.isPremium,
                                 onSelectTool = { tool ->
-                                    selectedUris.clear()
-                                    activeToolState.value = tool
+                                    if (userSettings.isPremium) {
+                                        selectedUris.clear()
+                                        activeToolState.value = tool
+                                    } else {
+                                        when (tool) {
+                                            PdfToolType.MERGE -> {
+                                                if (com.flashypdfkit.ads.UsageManager.canUseMerge(this@MainActivity)) {
+                                                    selectedUris.clear()
+                                                    activeToolState.value = tool
+                                                } else {
+                                                    pendingToolForAd = PdfToolType.MERGE
+                                                    showRewardedAdModal = PdfToolType.MERGE
+                                                }
+                                            }
+                                            PdfToolType.SIGN -> {
+                                                if (com.flashypdfkit.ads.UsageManager.canUseSign(this@MainActivity)) {
+                                                    selectedUris.clear()
+                                                    activeToolState.value = tool
+                                                } else {
+                                                    pendingToolForAd = PdfToolType.SIGN
+                                                    showRewardedAdModal = PdfToolType.SIGN
+                                                }
+                                            }
+                                            PdfToolType.PROTECT -> {
+                                                if (com.flashypdfkit.ads.UsageManager.canUseProtect(this@MainActivity)) {
+                                                    pendingToolForAd = PdfToolType.PROTECT
+                                                    showRewardedAdModal = PdfToolType.PROTECT
+                                                } else {
+                                                    showPremiumModal = true
+                                                }
+                                            }
+                                            else -> {
+                                                selectedUris.clear()
+                                                activeToolState.value = tool
+                                            }
+                                        }
+                                    }
                                 },
                                 onOpenUpgradeModal = { showPremiumModal = true },
                                 onOpenSettings = { activeToolState.value = PdfToolType.SETTINGS },
@@ -334,6 +372,51 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+
+                        if (showRewardedAdModal != null) {
+                            val tool = showRewardedAdModal!!
+                            val adText = when (tool) {
+                                PdfToolType.MERGE -> "Watch an ad to use Merge once today"
+                                PdfToolType.SIGN -> "Watch an ad to use Sign once today"
+                                PdfToolType.PROTECT -> "Watch an ad to lock a PDF (${com.flashypdfkit.ads.UsageManager.getProtectAdUses(this@MainActivity)}/2 today)"
+                                else -> "Watch an ad to use this tool once"
+                            }
+                            PremiumDialog(
+                                onDismiss = { showRewardedAdModal = null; pendingToolForAd = null },
+                                onUnlock = {
+                                    billingManager.launchPurchaseFlow(this@MainActivity)
+                                    showRewardedAdModal = null
+                                    pendingToolForAd = null
+                                },
+                                adButtonText = adText,
+                                onWatchAd = {
+                                    showRewardedAdModal = null
+                                    com.flashypdfkit.ads.UnityAdsManager.loadRewardedAd {
+                                        com.flashypdfkit.ads.UnityAdsManager.showRewardedAd(
+                                            this@MainActivity,
+                                            onCompleted = {
+                                                when (pendingToolForAd) {
+                                                    PdfToolType.MERGE -> com.flashypdfkit.ads.UsageManager.grantMergeRewardedExtra(this@MainActivity)
+                                                    PdfToolType.SIGN -> com.flashypdfkit.ads.UsageManager.grantSignRewardedExtra(this@MainActivity)
+                                                    PdfToolType.PROTECT -> com.flashypdfkit.ads.UsageManager.consumeProtectUse(this@MainActivity)
+                                                    else -> {}
+                                                }
+                                                val target = pendingToolForAd
+                                                pendingToolForAd = null
+                                                if (target != null) {
+                                                    selectedUris.clear()
+                                                    activeToolState.value = target
+                                                }
+                                            },
+                                            onFailed = {
+                                                Toast.makeText(this@MainActivity, "Ad playback failed or was skipped. Please try again.", Toast.LENGTH_SHORT).show()
+                                                pendingToolForAd = null
+                                            }
+                                        )
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -365,6 +448,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleSaveResult(file: File, toolType: PdfToolType) {
+        if (!prefsHistory.getUserSettings().isPremium) {
+            when (toolType) {
+                PdfToolType.MERGE -> com.flashypdfkit.ads.UsageManager.consumeMergeUseOrExtra(this)
+                PdfToolType.SIGN -> com.flashypdfkit.ads.UsageManager.consumeSignUseOrExtra(this)
+                else -> {}
+            }
+        }
         val savedUri = saveToDownloadsFolder(file)
         val processed = ProcessedFile(
             id = System.currentTimeMillis().toString(),

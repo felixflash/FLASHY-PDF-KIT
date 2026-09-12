@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.pdfbox.android)
     implementation(libs.play.billing.ktx)
+    implementation(libs.unity.ads)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

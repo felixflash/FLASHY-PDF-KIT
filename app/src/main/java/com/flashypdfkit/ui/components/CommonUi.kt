@@ -30,9 +30,11 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -535,9 +537,61 @@ fun GradientButton(
 }
 
 @Composable
+fun PasswordDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    error: String? = null
+) {
+    val isDark = isSystemInDarkTheme()
+    val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
+    val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
+    var password by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(AppRadius.xl),
+            color = surfaceColor,
+            border = androidx.compose.foundation.BorderStroke(1.5.dp, ActivePalette.Primary.copy(alpha = 0.5f))
+        ) {
+            Column(
+                modifier = Modifier.padding(26.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Password Protected",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
+                Spacer(modifier = Modifier.height(18.dp))
+                androidx.compose.material3.OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Enter Password") },
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (error != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = error, color = ActivePalette.Danger, fontSize = 12.sp)
+                }
+                Spacer(modifier = Modifier.height(22.dp))
+                GradientButton(
+                    text = "Unlock",
+                    onClick = { onConfirm(password) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PremiumDialog(
     onDismiss: () -> Unit,
-    onUnlock: () -> Unit
+    onUnlock: () -> Unit,
+    adButtonText: String? = null,
+    onWatchAd: (() -> Unit)? = null
 ) {
     val isDark = isSystemInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
@@ -598,6 +652,24 @@ fun PremiumDialog(
                     text = "Upgrade Now — Lifetime",
                     onClick = onUnlock
                 )
+
+                if (adButtonText != null && onWatchAd != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedButton(
+                        onClick = onWatchAd,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(AppRadius.md),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ActivePalette.Primary)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = adButtonText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
