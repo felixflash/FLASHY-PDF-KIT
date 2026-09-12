@@ -63,6 +63,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.window.Dialog
 import android.net.Uri
+import androidx.compose.ui.text.TextStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -572,6 +573,7 @@ fun HomeScreen(
                 OutlinedTextField(
                     value = driveUrl,
                     onValueChange = { driveUrl = it },
+                    textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
                     placeholder = {
                         Text(
                             "https://drive.google.com/file/...",
@@ -583,6 +585,8 @@ fun HomeScreen(
                     shape = RoundedCornerShape(AppRadius.md),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
                         focusedBorderColor = ActivePalette.Primary,
                         unfocusedBorderColor = borderColor,
                         focusedContainerColor = surfaceColor,
@@ -783,7 +787,7 @@ private fun VibrantToolCard(
     }
 }
 
-// Download PDF Helper function with Redirect Following and Google Drive parsing support
+// Download PDF Helper function with Redirect Following and Google Drive/Docs parsing support
 private fun downloadPdfFile(context: android.content.Context, urlString: String): File {
     var finalUrl = urlString.trim()
     
@@ -791,7 +795,21 @@ private fun downloadPdfFile(context: android.content.Context, urlString: String)
     if (finalUrl.contains("drive.google.com")) {
         val fileId = extractGoogleDriveFileId(finalUrl)
         if (fileId != null) {
-            finalUrl = "https://docs.google.com/uc?export=download&id=$fileId"
+            finalUrl = "https://docs.google.com/uc?export=download&id=$fileId&confirm=t"
+        }
+    } else if (finalUrl.contains("docs.google.com/document/d/")) {
+        val regex = java.util.regex.Pattern.compile("/document/d/([a-zA-Z0-9_-]+)")
+        val matcher = regex.matcher(finalUrl)
+        if (matcher.find()) {
+            val docId = matcher.group(1)
+            finalUrl = "https://docs.google.com/document/d/$docId/export?format=pdf"
+        }
+    } else if (finalUrl.contains("docs.google.com/spreadsheets/d/")) {
+        val regex = java.util.regex.Pattern.compile("/spreadsheets/d/([a-zA-Z0-9_-]+)")
+        val matcher = regex.matcher(finalUrl)
+        if (matcher.find()) {
+            val sheetId = matcher.group(1)
+            finalUrl = "https://docs.google.com/spreadsheets/d/$sheetId/export?format=pdf"
         }
     }
     
@@ -801,6 +819,7 @@ private fun downloadPdfFile(context: android.content.Context, urlString: String)
     conn.connectTimeout = 15000
     conn.readTimeout = 15000
     conn.instanceFollowRedirects = true
+    conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
     
     var status = conn.responseCode
     var redirectCount = 0
@@ -816,10 +835,20 @@ private fun downloadPdfFile(context: android.content.Context, urlString: String)
         conn.connectTimeout = 15000
         conn.readTimeout = 15000
         conn.instanceFollowRedirects = true
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
         status = conn.responseCode
         redirectCount++
     }
     
+    if (status == 401 || status == 403) {
+        throw java.io.IOException("This file isn't publicly accessible, please check sharing settings")
+    }
+    
+    val contentType = conn.contentType ?: ""
+    if (contentType.contains("text/html")) {
+        throw java.io.IOException("This file isn't publicly accessible, please check sharing settings")
+    }
+
     if (status != java.net.HttpURLConnection.HTTP_OK) {
         throw java.io.IOException("Server returned status: $status")
     }
@@ -840,7 +869,7 @@ private fun downloadPdfFile(context: android.content.Context, urlString: String)
     
     if (tempFile.length() < 10) {
         tempFile.delete()
-        throw java.io.IOException("Downloaded PDF is empty")
+        throw java.io.IOException("Downloaded file is empty or invalid")
     }
     
     return tempFile

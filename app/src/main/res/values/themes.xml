@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.FlashyPDFKit" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.FlashyPDFKit" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#0F1117</item>
+        <item name="windowSplashScreenAnimatedIcon">@android:drawable/ic_menu_agenda</item>
+        <item name="postSplashScreenTheme">@style/Theme.FlashyPDFKit.Normal</item>
+    </style>
+
+    <style name="Theme.FlashyPDFKit.Normal" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

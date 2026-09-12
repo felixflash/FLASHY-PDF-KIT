@@ -45,9 +45,11 @@ import com.flashypdfkit.ui.RecentScreen
 import com.flashypdfkit.ui.SettingsScreen
 import com.flashypdfkit.ui.SignScreen
 import com.flashypdfkit.ui.SplitScreen
+import com.flashypdfkit.ui.SplashScreen
 import com.flashypdfkit.ui.components.PremiumDialog
 import com.flashypdfkit.ui.theme.FlashyPDFTheme
 import com.flashypdfkit.data.BillingManager
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import java.io.File
@@ -112,6 +114,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -161,20 +164,24 @@ class MainActivity : ComponentActivity() {
 
             FlashyPDFTheme(darkTheme = isDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val activeTool = activeToolState.value
-
-                    BackHandler(enabled = activeTool != null) {
-                        activeToolState.value = null
-                    }
-
-                    if (!userSettings.hasCompletedOnboarding) {
-                        OnboardingScreen(
-                            onFinish = {
-                                prefsHistory.setCompletedOnboarding(true)
-                                userSettings = prefsHistory.getUserSettings()
-                            }
-                        )
+                    var showSplash by remember { mutableStateOf(true) }
+                    if (showSplash) {
+                        SplashScreen(onTimeout = { showSplash = false })
                     } else {
+                        val activeTool = activeToolState.value
+
+                        BackHandler(enabled = activeTool != null) {
+                            activeToolState.value = null
+                        }
+
+                        if (!userSettings.hasCompletedOnboarding) {
+                            OnboardingScreen(
+                                onFinish = {
+                                    prefsHistory.setCompletedOnboarding(true)
+                                    userSettings = prefsHistory.getUserSettings()
+                                }
+                            )
+                        } else {
                         when (activeTool) {
                             null -> HomeScreen(
                                 isPremium = userSettings.isPremium,
@@ -196,7 +203,7 @@ class MainActivity : ComponentActivity() {
                                 onBack = { activeToolState.value = null },
                                 onPickPdf = { singlePdfPicker.launch(arrayOf("application/pdf")) },
                                 onSharePdf = { uri -> shareUri(uri) },
-                                onSavePdf = { uri -> saveToDownloadsFolder(File(uri.path ?: "")) }
+                                onSavePdf = { uri -> saveUriToDownloads(uri) }
                             )
 
                             PdfToolType.MERGE -> MergeScreen(
@@ -315,6 +322,7 @@ class MainActivity : ComponentActivity() {
                                     activeToolState.value = PdfToolType.READ
                                 }
                             )
+                        }
                         }
 
                         if (showPremiumModal) {
@@ -455,11 +463,49 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun shareUri(uri: Uri) {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/pdf"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            val fileToShare = if (uri.scheme == "file") {
+                File(uri.path ?: "")
+            } else {
+                val tempFile = File(cacheDir, "shared_temp_${System.currentTimeMillis()}.pdf")
+                contentResolver.openInputStream(uri)?.use { input ->
+                    java.io.FileOutputStream(tempFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                tempFile
+            }
+            val contentUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", fileToShare)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, contentUri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Share PDF Document"))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Failed to share PDF: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
         }
-        startActivity(Intent.createChooser(intent, "Share PDF Document"))
+    }
+
+    private fun saveUriToDownloads(uri: Uri) {
+        try {
+            val fileToSave = if (uri.scheme == "file") {
+                File(uri.path ?: "")
+            } else {
+                val tempFile = File(cacheDir, "download_temp_${System.currentTimeMillis()}.pdf")
+                contentResolver.openInputStream(uri)?.use { input ->
+                    java.io.FileOutputStream(tempFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                tempFile
+            }
+            val savedUri = saveToDownloadsFolder(fileToSave)
+            Toast.makeText(this, "Saved ${fileToSave.name} to Downloads/FlashyPDF", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Failed to save PDF: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+        }
     }
 }
