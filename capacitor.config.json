@@ -1,0 +1,10 @@
+{
+  "appId": "com.flashypdfkit",
+  "appName": "FlashyKit",
+  "webDir": "www",
+  "plugins": {
+    "Keyboard": {
+      "resize": "none"
+    }
+  }
+}

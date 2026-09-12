@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- PDF Document Card -->
+    <path
+        android:pathData="M34,26 h26 l14,14 v42 a6,6 0 0,1 -6,6 h-34 a6,6 0 0,1 -6,-6 v-50 a6,6 0 0,1 6,-6 z"
+        android:fillColor="#FFFFFF" />
+    <!-- Fold Corner -->
+    <path
+        android:pathData="M60,26 v14 h14 z"
+        android:fillColor="#D0D7F7" />
+    <!-- Lightning Bolt Flash -->
+    <path
+        android:pathData="M56,38 L42,56 H53 L48,74 L66,52 H54 L56,38 Z"
+        android:fillColor="#5D52FF" />
+</vector>

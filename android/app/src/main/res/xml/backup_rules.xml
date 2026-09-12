@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Include all data by default, then exclude specific folders -->
+    <include domain="file" path="."/>
+    <include domain="sharedpref" path="."/>
+
+    <exclude domain="file" path="Downloads/"/>
+</full-backup-content>

@@ -1,0 +1,6 @@
+{
+  "name": "FlashyPDF Kit",
+  "description": "Comprehensive PDF tools suite for reading, converting, merging, splitting, compressing, and protecting PDF documents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
