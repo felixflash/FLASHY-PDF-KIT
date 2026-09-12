@@ -12,6 +12,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,8 +31,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Remove
@@ -522,7 +528,8 @@ fun ReaderScreen(
                         .fillMaxSize()
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    flingBehavior = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(listState)
                 ) {
                     itemsIndexed(renderedPages) { index, bitmap ->
                         Surface(
@@ -756,46 +763,104 @@ fun ReaderScreen(
         )
     }
 
-    fullscreenBitmap?.let { bitmap ->
+    fullscreenBitmap?.let { _ ->
         var scale by remember { mutableFloatStateOf(1f) }
         var offset by remember { mutableStateOf(Offset.Zero) }
+        val scrollState = rememberLazyListState()
 
+        // Pager state and scale state
+        val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+            initialPage = fullscreenPageIndex ?: 0,
+            pageCount = { renderedPages.size }
+        )
+        val coroutineScope = rememberCoroutineScope()
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(1f, 4f)
-                        if (scale > 1f) {
-                            offset = Offset(
-                                x = offset.x + pan.x,
-                                y = offset.y + pan.y
-                            )
-                        } else {
-                            offset = Offset.Zero
-                        }
-                    }
-                }
                 .testTag("pdf_fullscreen_overlay"),
             contentAlignment = Alignment.Center
         ) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Fullscreen Page View",
+            androidx.compose.foundation.pager.HorizontalPager(
+                state = pagerState,
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = offset.x,
-                        translationY = offset.y
-                    )
-                    .clickable {
-                        fullscreenBitmap = null
-                        fullscreenPageIndex = null
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            val newScale = (scale * zoom).coerceIn(1f, 4f)
+                            scale = newScale
+                            if (scale > 1f) {
+                                offset = Offset(
+                                    x = (offset.x + pan.x).coerceIn(-(size.width * (scale - 1) / 2), (size.width * (scale - 1) / 2)),
+                                    y = (offset.y + pan.y).coerceIn(-(size.height * (scale - 1) / 2), (size.height * (scale - 1) / 2))
+                                )
+                            } else {
+                                scale = 1f
+                                offset = Offset.Zero
+                            }
+                        }
                     }
-            )
+            ) { pageIndex ->
+                renderedPages[pageIndex]?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "PDF Page ${pageIndex + 1}",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offset.x,
+                                translationY = offset.y
+                            )
+                            .clickable {
+                                fullscreenBitmap = null
+                                fullscreenPageIndex = null
+                            }
+                    )
+                }
+            }
+
+            // Navigation Arrows
+            if (scale == 1f) {
+                // Previous
+                if (pagerState.currentPage > 0) {
+                    IconButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(8.dp)
+                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                    ) {
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Previous", tint = Color.White)
+                    }
+                }
+                
+                // Next
+                if (pagerState.currentPage < renderedPages.size - 1) {
+                    IconButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(8.dp)
+                            .background(Color.Black.copy(alpha = 0.3f), CircleShape)
+                    ) {
+                        Icon(Icons.Filled.ArrowForward, contentDescription = "Next", tint = Color.White)
+                    }
+                }
+            }
+
+            
+            // ... Close button and page label (kept same)
 
             // Close button at top-right
             IconButton(
@@ -818,23 +883,21 @@ fun ReaderScreen(
             }
 
             // Page label and tips at the bottom
-            fullscreenPageIndex?.let { idx ->
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(bottom = 24.dp),
-                    color = Color.Black.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(AppRadius.md)
-                ) {
-                    Text(
-                        text = "Page ${idx + 1} of $pageCount (Pinch to zoom, drag to pan, tap to exit)",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp),
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(AppRadius.md)
+            ) {
+                Text(
+                    text = "Page ${pagerState.currentPage + 1} of $pageCount (Pinch to zoom, drag to pan, tap to exit)",
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
         }
     }

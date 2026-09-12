@@ -160,6 +160,7 @@ fun PdfToImagesScreen(
                 FileItemCard(
                     name = currentUri?.lastPathSegment ?: "Selected Document",
                     sizeText = if (pageCount > 0) "$pageCount pages • Ready to extract" else "Ready to extract images",
+                    uri = currentUri,
                     onRemove = { currentUri = null; exportedFiles = emptyList(); errorMessage = null }
                 )
 

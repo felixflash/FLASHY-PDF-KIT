@@ -108,4 +108,13 @@ class PreferencesAndHistory(context: Context) {
         }
         return isFirst
     }
+
+    fun getActionCount(): Int {
+        return prefs.getInt("action_count", 0)
+    }
+
+    fun incrementActionCount() {
+        val count = getActionCount()
+        prefs.edit().putInt("action_count", count + 1).apply()
+    }
 }

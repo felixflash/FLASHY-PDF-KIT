@@ -241,6 +241,7 @@ fun ProtectScreen(
                 FileItemCard(
                     name = currentUri?.lastPathSegment ?: "Selected PDF",
                     sizeText = if (isInputPdfEncrypted) "Encrypted PDF Document" else "Ready for Protection",
+                    uri = currentUri,
                     onRemove = {
                         currentUri = null
                         resetState()

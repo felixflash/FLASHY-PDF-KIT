@@ -128,6 +128,7 @@ fun CompressScreen(
                 FileItemCard(
                     name = currentUri?.lastPathSegment ?: "Selected Document",
                     sizeText = "Ready for Compression",
+                    uri = currentUri,
                     onRemove = { currentUri = null; resultFile = null }
                 )
 

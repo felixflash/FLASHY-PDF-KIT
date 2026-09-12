@@ -150,20 +150,13 @@ fun SplitScreen(
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
+                        com.flashypdfkit.ui.components.FilePreviewThumbnail(
+                            context = androidx.compose.ui.platform.LocalContext.current,
+                            uri = currentUri!!,
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(RoundedCornerShape(AppRadius.sm))
-                                .background(ActivePalette.Teal.copy(alpha = if (isDark) 0.22f else 0.12f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Description,
-                                contentDescription = null,
-                                tint = ActivePalette.Teal,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        )
 
                         Spacer(modifier = Modifier.width(12.dp))
 

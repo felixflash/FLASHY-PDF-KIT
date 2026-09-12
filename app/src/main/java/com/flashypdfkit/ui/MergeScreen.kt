@@ -220,21 +220,14 @@ fun MergeScreen(
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Step number circle badge
-                            Box(
+                            // Thumbnail preview
+                            com.flashypdfkit.ui.components.FilePreviewThumbnail(
+                                context = androidx.compose.ui.platform.LocalContext.current,
+                                uri = uri,
                                 modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(ActivePalette.Navy.copy(alpha = if (isDark) 0.35f else 0.12f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "${index + 1}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textPrimary
-                                )
-                            }
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(AppRadius.sm))
+                            )
 
                             Spacer(modifier = Modifier.width(12.dp))
 

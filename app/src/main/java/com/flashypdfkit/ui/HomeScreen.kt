@@ -123,7 +123,10 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             // Brand Logo & Name
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -139,7 +142,7 @@ fun HomeScreen(
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = "FlashyPDF",
@@ -168,13 +171,18 @@ fun HomeScreen(
                     Text(
                         text = "Vibrant, high-speed PDF studio",
                         fontSize = 12.sp,
-                        color = textMuted
+                        color = textMuted,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
                 }
             }
 
             // Right Actions: Go Pro pill + Settings
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
                 if (!isPremium) {
                     Box(
                         modifier = Modifier
@@ -686,15 +694,15 @@ fun HomeScreen(
         }
 
         // --- 7. FOOTER ---
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(48.dp))
         Text(
-            text = "FlashyPDF • Fast, private & built for Android",
+            text = "FlashCom © 2026",
             fontSize = 12.sp,
             color = textMuted,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 36.dp)
+                .padding(bottom = 48.dp)
         )
     }
 }

@@ -455,6 +455,13 @@ class MainActivity : ComponentActivity() {
                 else -> {}
             }
         }
+        
+        // Track action for review prompt
+        prefsHistory.incrementActionCount()
+        if (prefsHistory.getActionCount() % 5 == 0) {
+            showReviewPrompt()
+        }
+
         val savedUri = saveToDownloadsFolder(file)
         val processed = ProcessedFile(
             id = System.currentTimeMillis().toString(),
@@ -466,6 +473,17 @@ class MainActivity : ComponentActivity() {
         )
         prefsHistory.addRecentFile(processed)
         Toast.makeText(this, "Saved ${file.name} to Downloads/FlashyPDF", Toast.LENGTH_LONG).show()
+    }
+
+    private fun showReviewPrompt() {
+        val manager = com.google.android.play.core.review.ReviewManagerFactory.create(this)
+        val request = manager.requestReviewFlow()
+        request.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val reviewInfo = task.result
+                manager.launchReviewFlow(this, reviewInfo)
+            }
+        }
     }
 
     private fun handleSaveMultipleResults(files: List<File>, toolType: PdfToolType) {

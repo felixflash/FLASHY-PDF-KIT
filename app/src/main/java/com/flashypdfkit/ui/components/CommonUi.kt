@@ -1,5 +1,13 @@
 package com.flashypdfkit.ui.components
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.Image
+import kotlinx.coroutines.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,6 +40,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -297,6 +307,7 @@ fun Dropzone(
 fun FileItemCard(
     name: String,
     sizeText: String,
+    uri: Uri? = null,
     onRemove: (() -> Unit)? = null
 ) {
     val isDark = isSystemInDarkTheme()
@@ -319,19 +330,29 @@ fun FileItemCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(AppRadius.sm))
-                    .background(ActivePalette.Primary.copy(alpha = if (isDark) 0.22f else 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Description,
-                    contentDescription = null,
-                    tint = ActivePalette.Primary,
-                    modifier = Modifier.size(22.dp)
+            if (uri != null) {
+                com.flashypdfkit.ui.components.FilePreviewThumbnail(
+                    context = androidx.compose.ui.platform.LocalContext.current,
+                    uri = uri,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(AppRadius.sm))
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(AppRadius.sm))
+                        .background(ActivePalette.Primary.copy(alpha = if (isDark) 0.22f else 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = null,
+                        tint = ActivePalette.Primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -537,6 +558,45 @@ fun GradientButton(
 }
 
 @Composable
+fun FilePreviewThumbnail(
+    context: Context,
+    uri: Uri,
+    modifier: Modifier = Modifier
+) {
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    
+    LaunchedEffect(uri) {
+        withContext(Dispatchers.IO) {
+            bitmap = com.flashypdfkit.pdf.PdfEngine.renderPdfPage(context, uri, 0, 150)
+        }
+    }
+
+    val isDark = isSystemInDarkTheme()
+    val surfaceMuted = if (isDark) ActivePalette.DarkSurfaceMuted else ActivePalette.LightSurfaceMuted
+    val textMuted = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted
+
+    if (bitmap != null) {
+        androidx.compose.foundation.Image(
+            bitmap = bitmap!!.asImageBitmap(),
+            contentDescription = "PDF Thumbnail",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+        )
+    } else {
+        Box(
+            modifier = modifier.background(surfaceMuted),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Description,
+                contentDescription = null,
+                tint = textMuted
+            )
+        }
+    }
+}
+
+@Composable
 fun PasswordDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
@@ -546,6 +606,7 @@ fun PasswordDialog(
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
     var password by remember { mutableStateOf("") }
+    var isPasswordVisible by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -568,7 +629,22 @@ fun PasswordDialog(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Enter Password") },
-                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    visualTransformation = if (isPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                            Icon(
+                                imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (isPasswordVisible) "Hide password" else "Show password"
+                            )
+                        }
+                    },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onDone = { onConfirm(password) }
+                    ),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
