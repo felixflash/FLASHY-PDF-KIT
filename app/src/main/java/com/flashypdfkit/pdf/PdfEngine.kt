@@ -27,12 +27,45 @@ import kotlin.math.min
 
 object PdfEngine {
 
+    fun openFileDescriptor(context: Context, uri: Uri, mode: String): ParcelFileDescriptor? {
+        return try {
+            if (uri.scheme == "file") {
+                val file = File(uri.path ?: "")
+                val flag = when (mode) {
+                    "r" -> ParcelFileDescriptor.MODE_READ_ONLY
+                    "w" -> ParcelFileDescriptor.MODE_WRITE_ONLY
+                    "rw" -> ParcelFileDescriptor.MODE_READ_WRITE
+                    else -> ParcelFileDescriptor.MODE_READ_ONLY
+                }
+                ParcelFileDescriptor.open(file, flag)
+            } else {
+                context.contentResolver.openFileDescriptor(uri, mode)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun openInputStream(context: Context, uri: Uri): InputStream? {
+        return try {
+            if (uri.scheme == "file") {
+                java.io.FileInputStream(File(uri.path ?: ""))
+            } else {
+                context.contentResolver.openInputStream(uri)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     fun <T> withPdfRenderer(context: Context, uri: Uri, block: (PdfRenderer) -> T): T? {
         var pfd: ParcelFileDescriptor? = null
         var tempFile: File? = null
         return try {
             try {
-                pfd = context.contentResolver.openFileDescriptor(uri, "r")
+                pfd = openFileDescriptor(context, uri, "r")
                 if (pfd != null) {
                     val renderer = PdfRenderer(pfd)
                     val result = block(renderer)
@@ -47,7 +80,7 @@ object PdfEngine {
 
             // Copy to temp file to guarantee a seekable local descriptor
             tempFile = File.createTempFile("pdf_seekable_", ".pdf", context.cacheDir)
-            val copied = context.contentResolver.openInputStream(uri)?.use { input ->
+            val copied = openInputStream(context, uri)?.use { input ->
                 FileOutputStream(tempFile).use { output ->
                     input.copyTo(output) > 0
                 }
@@ -107,7 +140,7 @@ object PdfEngine {
         val pdfDocument = PdfDocument()
         try {
             for ((index, uri) in imageUris.withIndex()) {
-                val inputStream: InputStream = context.contentResolver.openInputStream(uri) ?: continue
+                val inputStream: InputStream = openInputStream(context, uri) ?: continue
                 val originalBitmap = BitmapFactory.decodeStream(inputStream)
                 inputStream.close()
                 if (originalBitmap == null) continue
@@ -200,7 +233,7 @@ object PdfEngine {
 
         try {
             for (uri in pdfUris) {
-                val pfd = context.contentResolver.openFileDescriptor(uri, "r") ?: continue
+                val pfd = openFileDescriptor(context, uri, "r") ?: continue
                 pfd.use { descriptor ->
                     val renderer = PdfRenderer(descriptor)
                     for (i in 0 until renderer.pageCount) {
@@ -249,7 +282,7 @@ object PdfEngine {
         var pageCounter = 1
 
         try {
-            val pfd = context.contentResolver.openFileDescriptor(pdfUri, "r") ?: return false
+            val pfd = openFileDescriptor(context, pdfUri, "r") ?: return false
             pfd.use { descriptor ->
                 val renderer = PdfRenderer(descriptor)
                 val totalPages = renderer.pageCount
@@ -376,7 +409,7 @@ object PdfEngine {
     ): Boolean {
         val pdfDocument = PdfDocument()
         try {
-            val pfd = context.contentResolver.openFileDescriptor(pdfUri, "r") ?: return false
+            val pfd = openFileDescriptor(context, pdfUri, "r") ?: return false
             pfd.use { descriptor ->
                 val renderer = PdfRenderer(descriptor)
                 val totalPages = renderer.pageCount
@@ -453,7 +486,7 @@ object PdfEngine {
 
         val pdfDocument = PdfDocument()
         try {
-            val pfd = context.contentResolver.openFileDescriptor(pdfUri, "r") ?: return false
+            val pfd = openFileDescriptor(context, pdfUri, "r") ?: return false
             pfd.use { descriptor ->
                 val renderer = PdfRenderer(descriptor)
                 val totalPages = renderer.pageCount
@@ -504,7 +537,7 @@ object PdfEngine {
     fun protectPdf(context: Context, pdfUri: Uri, password: String, outputFile: File): Boolean {
         return try {
             PDFBoxResourceLoader.init(context.applicationContext)
-            val inputStream = context.contentResolver.openInputStream(pdfUri) ?: return false
+            val inputStream = openInputStream(context, pdfUri) ?: return false
             val document = inputStream.use { stream ->
                 PDDocument.load(stream)
             }
@@ -528,7 +561,7 @@ object PdfEngine {
                 PDFBoxResourceLoader.init(context.applicationContext)
                 val tempUnprotected = File(context.cacheDir, "temp_render_${System.currentTimeMillis()}.pdf")
                 val pdfDocument = PdfDocument()
-                val pfd = context.contentResolver.openFileDescriptor(pdfUri, "r") ?: return false
+                val pfd = openFileDescriptor(context, pdfUri, "r") ?: return false
                 pfd.use { descriptor ->
                     val renderer = PdfRenderer(descriptor)
                     for (i in 0 until renderer.pageCount) {
@@ -577,7 +610,7 @@ object PdfEngine {
     fun isPdfEncrypted(context: Context, pdfUri: Uri): Boolean {
         return try {
             PDFBoxResourceLoader.init(context.applicationContext)
-            val inputStream = context.contentResolver.openInputStream(pdfUri) ?: return false
+            val inputStream = openInputStream(context, pdfUri) ?: return false
             inputStream.use { stream ->
                 val doc = PDDocument.load(stream)
                 val enc = doc.isEncrypted
@@ -594,7 +627,7 @@ object PdfEngine {
     fun removePdfProtection(context: Context, pdfUri: Uri, password: String, outputFile: File): Boolean {
         return try {
             PDFBoxResourceLoader.init(context.applicationContext)
-            val inputStream = context.contentResolver.openInputStream(pdfUri) ?: return false
+            val inputStream = openInputStream(context, pdfUri) ?: return false
             val document = inputStream.use { stream ->
                 PDDocument.load(stream, password)
             }
