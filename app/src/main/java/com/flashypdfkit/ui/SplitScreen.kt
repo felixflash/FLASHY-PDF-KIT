@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -61,6 +62,7 @@ import com.flashypdfkit.ui.components.ToolTopBar
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -78,7 +80,7 @@ fun SplitScreen(
     val context = LocalContext.current
     val prefsHistory = remember { PreferencesAndHistory(context) }
     val scope = rememberCoroutineScope()
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
 
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
@@ -118,7 +120,7 @@ fun SplitScreen(
             title = "Split",
             onBack = onBack,
             infoTitle = "Extract Specific Pages",
-            infoText = "Extract custom page ranges (e.g., 1, 3, 5-8) into a crisp new PDF.",
+            infoText = "Extract only the pages you need. Select custom page ranges (e.g., 1, 3, 5-8) into a crisp new PDF.",
             toolKey = "split",
             prefsHistory = prefsHistory
         )
@@ -199,7 +201,74 @@ fun SplitScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Page range input label
+                // Page grid preview (Organize style)
+                Text(
+                    text = "Visual Page Preview:",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(80.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    items(totalPages) { idx ->
+                        Box(
+                            modifier = Modifier
+                                .aspectRatio(0.75f)
+                                .clip(RoundedCornerShape(AppRadius.sm))
+                                .border(1.dp, borderColor, RoundedCornerShape(AppRadius.sm))
+                                .tactilePress {
+                                    // Append or toggle page in rangeText
+                                    val currentRange = rangeText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+                                    if (currentRange.contains("${idx + 1}")) {
+                                        currentRange.remove("${idx + 1}")
+                                    } else {
+                                        currentRange.add("${idx + 1}")
+                                    }
+                                    rangeText = currentRange.joinToString(", ")
+                                }
+                        ) {
+                            com.flashypdfkit.ui.components.FilePreviewThumbnail(
+                                context = context,
+                                uri = currentUri!!,
+                                pageIndex = idx,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            
+                            // Selection overlay
+                            val isSelected = rangeText.split(",").map { it.trim() }.contains("${idx + 1}")
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(ActivePalette.Primary.copy(alpha = 0.25f))
+                                        .border(2.dp, ActivePalette.Primary, RoundedCornerShape(AppRadius.sm))
+                                )
+                            }
+
+                            Surface(
+                                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                                shape = CircleShape,
+                                color = if (isSelected) ActivePalette.Primary else Color.Black.copy(alpha = 0.5f)
+                            ) {
+                                Text(
+                                    text = "${idx + 1}",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 Text(
                     text = "Pages to extract:",
                     fontSize = 14.sp,
@@ -208,6 +277,7 @@ fun SplitScreen(
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
+
 
                 OutlinedTextField(
                     value = rangeText,

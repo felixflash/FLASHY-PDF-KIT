@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -77,12 +79,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 
 @Composable
@@ -95,7 +99,7 @@ fun ToolTopBar(
     prefsHistory: PreferencesAndHistory? = null,
     trailing: (@Composable () -> Unit)? = null
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val borderColor = if (isDark) ActivePalette.DarkBorder else ActivePalette.LightBorder
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
@@ -248,7 +252,7 @@ fun Dropzone(
     icon: String = "📄",
     onClick: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
     val textMuted = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted
@@ -310,7 +314,7 @@ fun FileItemCard(
     uri: Uri? = null,
     onRemove: (() -> Unit)? = null
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val borderColor = if (isDark) ActivePalette.DarkBorder else ActivePalette.LightBorder
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
@@ -401,7 +405,7 @@ fun ResultCard(
     onSave: () -> Unit,
     onShare: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
     val textMuted = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted
@@ -516,7 +520,7 @@ fun GradientButton(
     enabled: Boolean = true,
     isLoading: Boolean = false
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val bgBrush = if (enabled) {
         ActivePalette.SunsetGradient
     } else {
@@ -561,40 +565,72 @@ fun GradientButton(
 fun FilePreviewThumbnail(
     context: Context,
     uri: Uri,
+    pageIndex: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var bitmap by remember(uri, pageIndex) { mutableStateOf<Bitmap?>(null) }
     
-    LaunchedEffect(uri) {
+    LaunchedEffect(uri, pageIndex) {
         withContext(Dispatchers.IO) {
-            bitmap = com.flashypdfkit.pdf.PdfEngine.renderPdfPage(context, uri, 0, 150)
+            bitmap = com.flashypdfkit.pdf.PdfEngine.renderPdfPage(context, uri, pageIndex, 200)
         }
     }
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceMuted = if (isDark) ActivePalette.DarkSurfaceMuted else ActivePalette.LightSurfaceMuted
     val textMuted = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted
 
-    if (bitmap != null) {
-        androidx.compose.foundation.Image(
-            bitmap = bitmap!!.asImageBitmap(),
-            contentDescription = "PDF Thumbnail",
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-        )
-    } else {
-        Box(
-            modifier = modifier.background(surfaceMuted),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Description,
-                contentDescription = null,
-                tint = textMuted
+    Surface(
+        modifier = modifier.clip(RoundedCornerShape(AppRadius.sm)),
+        color = Color.White,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, ActivePalette.DarkBorder.copy(alpha = 0.3f))
+    ) {
+        if (bitmap != null) {
+            androidx.compose.foundation.Image(
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = "PDF Thumbnail",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
             )
+        } else {
+            Box(
+                modifier = Modifier.fillMaxSize().background(surfaceMuted),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Description,
+                    contentDescription = null,
+                    tint = textMuted,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
+
+@Composable
+fun ImageFileThumbnail(
+    uri: Uri,
+    modifier: Modifier = Modifier
+) {
+    val isDark = isAppInDarkTheme()
+    val surfaceMuted = if (isDark) ActivePalette.DarkSurfaceMuted else ActivePalette.LightSurfaceMuted
+    val textMuted = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted
+
+    Surface(
+        modifier = modifier.clip(RoundedCornerShape(AppRadius.sm)),
+        color = surfaceMuted,
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, ActivePalette.DarkBorder.copy(alpha = 0.3f))
+    ) {
+        androidx.compose.foundation.Image(
+            painter = coil.compose.rememberAsyncImagePainter(uri),
+            contentDescription = "Image Thumbnail",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+    }
+}
+
 
 @Composable
 fun PasswordDialog(
@@ -602,7 +638,7 @@ fun PasswordDialog(
     onConfirm: (String) -> Unit,
     error: String? = null
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
     var password by remember { mutableStateOf("") }
@@ -669,7 +705,7 @@ fun PremiumDialog(
     adButtonText: String? = null,
     onWatchAd: (() -> Unit)? = null
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
     val textMuted = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted

@@ -75,6 +75,7 @@ import com.flashypdfkit.ui.components.ToolTopBar
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -110,7 +111,7 @@ fun OrganizeScreen(
     val context = LocalContext.current
     val prefsHistory = remember { PreferencesAndHistory(context) }
     val scope = rememberCoroutineScope()
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val haptic = LocalHapticFeedback.current
 
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
@@ -163,7 +164,7 @@ fun OrganizeScreen(
             title = "Organize",
             onBack = onBack,
             infoTitle = "Rearrange & Orient Pages",
-            infoText = "Rotate individual pages or delete unwanted ones before saving.",
+            infoText = "Reorder, delete, and rotate individual pages to organize your document before saving.",
             toolKey = "organize",
             prefsHistory = prefsHistory
         )

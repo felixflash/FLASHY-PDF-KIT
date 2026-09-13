@@ -59,11 +59,13 @@ import com.flashypdfkit.pdf.PdfEngine
 import com.flashypdfkit.ui.components.Dropzone
 import com.flashypdfkit.ui.components.FileItemCard
 import com.flashypdfkit.ui.components.GradientButton
+import com.flashypdfkit.ui.components.ImageFileThumbnail
 import com.flashypdfkit.ui.components.ResultCard
 import com.flashypdfkit.ui.components.ToolTopBar
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -82,7 +84,7 @@ fun ImagesToPdfScreen(
     val context = LocalContext.current
     val prefsHistory = remember { PreferencesAndHistory(context) }
     val scope = rememberCoroutineScope()
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
 
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
@@ -111,7 +113,7 @@ fun ImagesToPdfScreen(
             title = "Images to PDF",
             onBack = onBack,
             infoTitle = "Photo to Document Converter",
-            infoText = "Bundle scanned pages, receipts, or photos into a single clean PDF document.",
+            infoText = "Turn photos, receipts, and scans into a single high-quality PDF document.",
             toolKey = "images_to_pdf",
             prefsHistory = prefsHistory
         )
@@ -241,20 +243,12 @@ fun ImagesToPdfScreen(
                                 modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
+                                ImageFileThumbnail(
+                                    uri = uri,
                                     modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(ActivePalette.Primary.copy(alpha = 0.12f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "${index + 1}",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = ActivePalette.Primary
-                                    )
-                                }
+                                        .size(42.dp)
+                                        .clip(RoundedCornerShape(AppRadius.sm))
+                                )
 
                                 Spacer(modifier = Modifier.width(12.dp))
 

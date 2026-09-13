@@ -12,8 +12,8 @@ android {
         applicationId = "com.flashypdfkit"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.8.0"
+        versionCode = 17
+        versionName = "2.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,6 +30,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -48,6 +49,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -67,6 +69,7 @@ dependencies {
     implementation(libs.play.billing.ktx)
     implementation(libs.play.review.ktx)
     implementation(libs.unity.ads)
+    implementation(libs.coil.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

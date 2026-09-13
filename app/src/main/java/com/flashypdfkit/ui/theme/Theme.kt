@@ -6,10 +6,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+val LocalIsDarkTheme = staticCompositionLocalOf { false }
+
+@Composable
+fun isAppInDarkTheme(): Boolean = LocalIsDarkTheme.current
 
 private val DarkColorScheme = darkColorScheme(
     primary = AccentPurple,
@@ -49,8 +56,10 @@ fun FlashyPDFTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+    CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content
+        )
+    }
 }

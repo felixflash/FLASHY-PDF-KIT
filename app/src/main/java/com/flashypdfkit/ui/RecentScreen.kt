@@ -59,6 +59,7 @@ import com.flashypdfkit.ui.components.ToolTopBar
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -73,7 +74,7 @@ fun RecentScreen(
     onDeleteFile: (ProcessedFile) -> Unit,
     onClearAll: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val surfaceMuted = if (isDark) ActivePalette.DarkSurfaceMuted else ActivePalette.LightSurfaceMuted

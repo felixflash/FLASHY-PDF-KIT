@@ -49,7 +49,6 @@ import com.flashypdfkit.ui.SplashScreen
 import com.flashypdfkit.ui.components.PremiumDialog
 import com.flashypdfkit.ui.theme.FlashyPDFTheme
 import com.flashypdfkit.data.BillingManager
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import java.io.File
@@ -83,8 +82,16 @@ class MainActivity : ComponentActivity() {
                     contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 } catch (_: Exception) {}
             }
-            selectedUris.clear()
-            selectedUris.addAll(uris)
+            if (activeToolState.value == PdfToolType.MERGE) {
+                uris.forEach { uri ->
+                    if (!selectedUris.any { it == uri || it.toString() == uri.toString() }) {
+                        selectedUris.add(uri)
+                    }
+                }
+            } else {
+                selectedUris.clear()
+                selectedUris.addAll(uris)
+            }
         }
     }
 
@@ -114,7 +121,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -246,7 +252,10 @@ class MainActivity : ComponentActivity() {
 
                             PdfToolType.MERGE -> MergeScreen(
                                 selectedUris = selectedUris,
-                                onBack = { activeToolState.value = null },
+                                onBack = {
+                                    activeToolState.value = null
+                                    selectedUris.clear()
+                                },
                                 onPickFiles = { multiPdfPicker.launch(arrayOf("application/pdf")) },
                                 onSaveResult = { file, tool -> handleSaveResult(file, tool) },
                                 onShareResult = { file -> shareFile(file) }

@@ -52,6 +52,7 @@ import com.flashypdfkit.ui.components.ToolTopBar
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 
 @Composable
@@ -63,7 +64,7 @@ fun SettingsScreen(
     onOpenUpgrade: () -> Unit,
     onOpenLegal: () -> Unit
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val surfaceMuted = if (isDark) ActivePalette.DarkSurfaceMuted else ActivePalette.LightSurfaceMuted
@@ -345,7 +346,7 @@ fun SettingsItem(
     trailingText: String? = null,
     onClick: (() -> Unit)? = null
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
     val borderColor = if (isDark) ActivePalette.DarkBorder else ActivePalette.LightBorder
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary

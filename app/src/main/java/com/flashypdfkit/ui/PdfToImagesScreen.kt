@@ -59,6 +59,7 @@ import com.flashypdfkit.ui.components.ToolTopBar
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -89,7 +90,7 @@ fun PdfToImagesScreen(
     val context = LocalContext.current
     val prefsHistory = remember { PreferencesAndHistory(context) }
     val scope = rememberCoroutineScope()
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
 
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
@@ -138,7 +139,7 @@ fun PdfToImagesScreen(
             title = "PDF to Images",
             onBack = onBack,
             infoTitle = "Page Image Extraction",
-            infoText = "Export every PDF page as independent high-resolution images.",
+            infoText = "Export all document pages as crisp, independent JPG or PNG high-resolution images.",
             toolKey = "pdf_to_images",
             prefsHistory = prefsHistory
         )
@@ -166,7 +167,50 @@ fun PdfToImagesScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Options card: Format & DPI
+                // Horizontal Page Preview
+                Text(
+                    text = "Document Preview ($pageCount Pages)",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(pageCount) { idx ->
+                        Box(
+                            modifier = Modifier
+                                .size(width = 90.dp, height = 120.dp)
+                                .clip(RoundedCornerShape(AppRadius.sm))
+                                .border(1.dp, borderColor, RoundedCornerShape(AppRadius.sm))
+                        ) {
+                            com.flashypdfkit.ui.components.FilePreviewThumbnail(
+                                context = context,
+                                uri = currentUri!!,
+                                pageIndex = idx,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Surface(
+                                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+                                shape = CircleShape,
+                                color = Color.Black.copy(alpha = 0.5f)
+                            ) {
+                                Text(
+                                    text = "${idx + 1}",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(AppRadius.xl),

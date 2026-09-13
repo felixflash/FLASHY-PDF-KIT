@@ -17,11 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.MergeType
@@ -35,7 +38,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +66,7 @@ import com.flashypdfkit.ui.components.ToolTopBar
 import com.flashypdfkit.ui.theme.ActivePalette
 import com.flashypdfkit.ui.theme.AppRadius
 import com.flashypdfkit.ui.theme.AppSpacing
+import com.flashypdfkit.ui.theme.isAppInDarkTheme
 import com.flashypdfkit.ui.theme.tactilePress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,7 +75,7 @@ import java.io.File
 
 @Composable
 fun MergeScreen(
-    selectedUris: List<Uri>,
+    selectedUris: SnapshotStateList<Uri>,
     onBack: () -> Unit,
     onPickFiles: () -> Unit,
     onSaveResult: (File, PdfToolType) -> Unit,
@@ -78,7 +84,7 @@ fun MergeScreen(
     val context = LocalContext.current
     val prefsHistory = remember { PreferencesAndHistory(context) }
     val scope = rememberCoroutineScope()
-    val isDark = isSystemInDarkTheme()
+    val isDark = isAppInDarkTheme()
 
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
@@ -87,16 +93,9 @@ fun MergeScreen(
     val textPrimary = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
     val textMuted = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted
 
-    val fileList = remember { mutableStateListOf<Uri>().apply { addAll(selectedUris) } }
+    val fileList = selectedUris
     var isProcessing by remember { mutableStateOf(false) }
     var resultFile by remember { mutableStateOf<File?>(null) }
-
-    LaunchedEffect(selectedUris.toList()) {
-        if (selectedUris.isNotEmpty()) {
-            fileList.clear()
-            fileList.addAll(selectedUris)
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -107,7 +106,7 @@ fun MergeScreen(
             title = "Merge",
             onBack = onBack,
             infoTitle = "Combine in Sequence",
-            infoText = "Files are stitched in the order listed below into a single PDF.",
+            infoText = "Combine multiple files into one clean document. Files are stitched in the order listed below into a single PDF.",
             toolKey = "merge",
             prefsHistory = prefsHistory
         )
@@ -204,10 +203,18 @@ fun MergeScreen(
             // Sequence List
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                itemsIndexed(fileList) { index, uri ->
+                itemsIndexed(fileList, key = { _, uri -> uri.toString() }) { index, uri ->
                     val name = uri.lastPathSegment?.substringAfterLast("/") ?: "Document ${index + 1}"
+                    var pageCount by remember(uri) { mutableIntStateOf(0) }
+
+                    LaunchedEffect(uri) {
+                        withContext(Dispatchers.IO) {
+                            pageCount = PdfEngine.getPdfPageCount(context, uri)
+                        }
+                    }
+
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(AppRadius.md),
@@ -217,17 +224,60 @@ fun MergeScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp),
+                                .padding(start = 10.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Thumbnail preview
-                            com.flashypdfkit.ui.components.FilePreviewThumbnail(
-                                context = androidx.compose.ui.platform.LocalContext.current,
-                                uri = uri,
+                            // Organize-style paper card thumbnail preview
+                            Box(
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .width(52.dp)
+                                    .aspectRatio(0.75f)
                                     .clip(RoundedCornerShape(AppRadius.sm))
-                            )
+                                    .border(1.dp, borderColor, RoundedCornerShape(AppRadius.sm))
+                            ) {
+                                com.flashypdfkit.ui.components.FilePreviewThumbnail(
+                                    context = context,
+                                    uri = uri,
+                                    pageIndex = 0,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+
+                                // Sequence badge top-start (matching OrganizeScreen style)
+                                Surface(
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(3.dp),
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = ActivePalette.Primary
+                                ) {
+                                    Text(
+                                        text = "#${index + 1}",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = androidx.compose.ui.graphics.Color.White,
+                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                    )
+                                }
+
+                                // Page count badge bottom-end
+                                if (pageCount > 0) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(3.dp),
+                                        shape = RoundedCornerShape(3.dp),
+                                        color = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.65f)
+                                    ) {
+                                        Text(
+                                            text = "${pageCount}p",
+                                            fontSize = 8.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = androidx.compose.ui.graphics.Color.White,
+                                            modifier = Modifier.padding(horizontal = 3.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
+                            }
 
                             Spacer(modifier = Modifier.width(12.dp))
 
@@ -240,26 +290,91 @@ fun MergeScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Text(
-                                    text = "Sequence Part #${index + 1}",
-                                    fontSize = 11.sp,
-                                    color = textMuted
-                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = ActivePalette.Primary.copy(alpha = if (isDark) 0.2f else 0.1f)
+                                    ) {
+                                        Text(
+                                            text = if (pageCount > 0) "$pageCount ${if (pageCount == 1) "page" else "pages"}" else "PDF",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = ActivePalette.Primary,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Part ${index + 1} of ${fileList.size}",
+                                        fontSize = 11.sp,
+                                        color = textMuted
+                                    )
+                                }
                             }
 
-                            IconButton(
-                                onClick = { fileList.removeAt(index) },
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(RoundedCornerShape(AppRadius.sm))
-                                    .background(ActivePalette.Danger.copy(alpha = if (isDark) 0.18f else 0.08f))
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Reorder and remove buttons with exact bounded dimensions
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Remove file",
-                                    tint = ActivePalette.Danger,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                                if (index > 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isDark) ActivePalette.DarkSurfaceMuted else ActivePalette.LightSurfaceMuted)
+                                            .tactilePress(onClick = {
+                                                val item = fileList.removeAt(index)
+                                                fileList.add(index - 1, item)
+                                            }),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowUpward,
+                                            contentDescription = "Move up",
+                                            tint = textMuted,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                }
+                                if (index < fileList.size - 1) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(28.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isDark) ActivePalette.DarkSurfaceMuted else ActivePalette.LightSurfaceMuted)
+                                            .tactilePress(onClick = {
+                                                val item = fileList.removeAt(index)
+                                                fileList.add(index + 1, item)
+                                            }),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowDownward,
+                                            contentDescription = "Move down",
+                                            tint = textMuted,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .clip(RoundedCornerShape(AppRadius.sm))
+                                        .background(ActivePalette.Danger.copy(alpha = if (isDark) 0.18f else 0.08f))
+                                        .tactilePress(onClick = { fileList.removeAt(index) }),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Remove file",
+                                        tint = ActivePalette.Danger,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
                             }
                         }
                     }

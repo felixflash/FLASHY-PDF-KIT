@@ -3,20 +3,16 @@ package com.flashypdfkit.ui.theme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -103,46 +99,25 @@ object AppRadius {
     val full: Dp = 999.dp
 }
 
+object AppShapes {
+    val sm = androidx.compose.foundation.shape.RoundedCornerShape(AppRadius.sm)
+    val md = androidx.compose.foundation.shape.RoundedCornerShape(AppRadius.md)
+    val lg = androidx.compose.foundation.shape.RoundedCornerShape(AppRadius.lg)
+    val xl = androidx.compose.foundation.shape.RoundedCornerShape(AppRadius.xl)
+    val full = androidx.compose.foundation.shape.RoundedCornerShape(AppRadius.full)
+    val icon = androidx.compose.foundation.shape.RoundedCornerShape(13.dp)
+    val badge = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+}
+
 /**
- * Tactile touch press micro-interaction:
- * Provides physical spring feedback when pressing buttons or cards.
+ * Lightweight touch press feedback helper
  */
 fun Modifier.tactilePress(
     enabled: Boolean = true,
-    targetScale: Float = 0.965f,
     onClick: (() -> Unit)? = null
-): Modifier = composed {
-    if (!enabled) return@composed this
-
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) targetScale else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-        label = "tactileScale"
+): Modifier {
+    if (!enabled || onClick == null) return this
+    return this.clickable(
+        onClick = onClick
     )
-
-    this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .pointerInput(Unit) {
-            awaitPointerEventScope {
-                while (true) {
-                    awaitFirstDown(requireUnconsumed = false)
-                    isPressed = true
-                    waitForUpOrCancellation()
-                    isPressed = false
-                }
-            }
-        }
-        .then(
-            if (onClick != null) {
-                Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onClick
-                )
-            } else Modifier
-        )
 }
