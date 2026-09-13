@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -703,7 +704,8 @@ fun PremiumDialog(
     onDismiss: () -> Unit,
     onUnlock: () -> Unit,
     adButtonText: String? = null,
-    onWatchAd: (() -> Unit)? = null
+    onWatchAd: (() -> Unit)? = null,
+    isOnline: Boolean = true
 ) {
     val isDark = isAppInDarkTheme()
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
@@ -771,15 +773,30 @@ fun PremiumDialog(
                         onClick = onWatchAd,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(AppRadius.md),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = ActivePalette.Primary)
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = if (isOnline) ActivePalette.Primary else textMuted
+                        )
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                            imageVector = if (isOnline) Icons.Default.PlayArrow else Icons.Default.WifiOff,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = adButtonText, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (isOnline) adButtonText else "$adButtonText (Offline)",
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    if (!isOnline) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "⚡ Requires internet connection to load reward ads",
+                            fontSize = 11.sp,
+                            color = ActivePalette.Honey,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
 

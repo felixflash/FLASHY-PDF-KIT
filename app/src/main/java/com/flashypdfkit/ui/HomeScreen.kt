@@ -50,6 +50,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -103,6 +105,15 @@ fun HomeScreen(
     var driveUrl by remember { mutableStateOf("") }
     val lazyListState = rememberLazyListState()
     val isDark = isAppInDarkTheme()
+
+    val isOnline by com.flashypdfkit.ads.NetworkMonitor.isOnline.collectAsState()
+    var isAdLoaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isOnline) {
+        if (!isOnline) {
+            isAdLoaded = false
+        }
+    }
 
     val canvasColor = if (isDark) ActivePalette.DarkCanvas else ActivePalette.LightCanvas
     val surfaceColor = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface
@@ -712,18 +723,24 @@ fun HomeScreen(
         }
     }
 
-    // --- STICKY BOTTOM UNITY ADS BANNER (ISOLATED OUTSIDE SCROLLING LIST) ---
-    if (!isPremium) {
+    // --- STICKY BOTTOM UNITY ADS BANNER (COLLAPSES COMPLETELY TO 0 HEIGHT WHEN NOT LOADED / OFFLINE) ---
+    if (!isPremium && isOnline) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(surfaceColor)
-                .border(borderStroke)
-                .padding(vertical = 4.dp),
+            modifier = if (isAdLoaded) {
+                Modifier
+                    .fillMaxWidth()
+                    .background(surfaceColor)
+                    .border(borderStroke)
+                    .padding(vertical = 4.dp)
+            } else {
+                Modifier.size(0.dp)
+            },
             contentAlignment = Alignment.Center
         ) {
             com.flashypdfkit.ads.UnityBannerView(
-                modifier = Modifier.size(320.dp, 50.dp)
+                modifier = if (isAdLoaded) Modifier.size(320.dp, 50.dp) else Modifier.size(0.dp),
+                onAdLoaded = { isAdLoaded = true },
+                onAdFailedToLoad = { isAdLoaded = false }
             )
         }
     }

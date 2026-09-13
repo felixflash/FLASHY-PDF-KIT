@@ -48,7 +48,22 @@ import com.flashypdfkit.ui.SplitScreen
 import com.flashypdfkit.ui.SplashScreen
 import com.flashypdfkit.ui.components.PremiumDialog
 import com.flashypdfkit.ui.theme.FlashyPDFTheme
+import com.flashypdfkit.ui.theme.ActivePalette
+import com.flashypdfkit.ui.theme.AppShapes
 import com.flashypdfkit.data.BillingManager
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import java.io.File
@@ -126,6 +141,7 @@ class MainActivity : ComponentActivity() {
 
         prefsHistory = PreferencesAndHistory(this)
         billingManager = BillingManager(this, prefsHistory)
+        com.flashypdfkit.ads.NetworkMonitor.start(this)
         com.flashypdfkit.ads.UnityAdsManager.initialize(this)
 
         // Handle incoming PDF intent if opened from external app
@@ -142,8 +158,10 @@ class MainActivity : ComponentActivity() {
             var showPremiumModal by remember { mutableStateOf(false) }
             var pendingToolForAd by remember { mutableStateOf<PdfToolType?>(null) }
             var showRewardedAdModal by remember { mutableStateOf<PdfToolType?>(null) }
+            var isLoadingRewardedAd by remember { mutableStateOf(false) }
             var recentFilesList by remember { mutableStateOf(prefsHistory.getRecentFiles()) }
 
+            val isOnline by com.flashypdfkit.ads.NetworkMonitor.isOnline.collectAsState()
             val isPremiumOwned by billingManager.isPremiumOwned.collectAsState()
             val purchaseError by billingManager.purchaseError.collectAsState()
 
@@ -378,6 +396,31 @@ class MainActivity : ComponentActivity() {
                                 onUnlock = {
                                     billingManager.launchPurchaseFlow(this@MainActivity)
                                     showPremiumModal = false
+                                },
+                                adButtonText = "Watch ad to unlock bonus Pro uses today",
+                                isOnline = isOnline,
+                                onWatchAd = {
+                                    showPremiumModal = false
+                                    com.flashypdfkit.ads.UnityAdsManager.showOrLoadRewardedAd(
+                                        activity = this@MainActivity,
+                                        onLoading = {
+                                            isLoadingRewardedAd = true
+                                        },
+                                        onCompleted = {
+                                            isLoadingRewardedAd = false
+                                            com.flashypdfkit.ads.UsageManager.grantMergeRewardedExtra(this@MainActivity)
+                                            com.flashypdfkit.ads.UsageManager.grantSignRewardedExtra(this@MainActivity)
+                                            Toast.makeText(
+                                                this@MainActivity,
+                                                "🎉 Bonus uses unlocked for Merge & Sign today!",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        },
+                                        onFailed = { reason ->
+                                            isLoadingRewardedAd = false
+                                            Toast.makeText(this@MainActivity, reason, Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
                                 }
                             )
                         }
@@ -398,33 +441,67 @@ class MainActivity : ComponentActivity() {
                                     pendingToolForAd = null
                                 },
                                 adButtonText = adText,
+                                isOnline = isOnline,
                                 onWatchAd = {
+                                    val target = pendingToolForAd
                                     showRewardedAdModal = null
-                                    com.flashypdfkit.ads.UnityAdsManager.loadRewardedAd {
-                                        com.flashypdfkit.ads.UnityAdsManager.showRewardedAd(
-                                            this@MainActivity,
-                                            onCompleted = {
-                                                when (pendingToolForAd) {
-                                                    PdfToolType.MERGE -> com.flashypdfkit.ads.UsageManager.grantMergeRewardedExtra(this@MainActivity)
-                                                    PdfToolType.SIGN -> com.flashypdfkit.ads.UsageManager.grantSignRewardedExtra(this@MainActivity)
-                                                    PdfToolType.PROTECT -> com.flashypdfkit.ads.UsageManager.consumeProtectUse(this@MainActivity)
-                                                    else -> {}
-                                                }
-                                                val target = pendingToolForAd
-                                                pendingToolForAd = null
-                                                if (target != null) {
-                                                    selectedUris.clear()
-                                                    activeToolState.value = target
-                                                }
-                                            },
-                                            onFailed = {
-                                                Toast.makeText(this@MainActivity, "Ad playback failed or was skipped. Please try again.", Toast.LENGTH_SHORT).show()
-                                                pendingToolForAd = null
+                                    pendingToolForAd = null
+                                    com.flashypdfkit.ads.UnityAdsManager.showOrLoadRewardedAd(
+                                        activity = this@MainActivity,
+                                        onLoading = {
+                                            isLoadingRewardedAd = true
+                                        },
+                                        onCompleted = {
+                                            isLoadingRewardedAd = false
+                                            when (target) {
+                                                PdfToolType.MERGE -> com.flashypdfkit.ads.UsageManager.grantMergeRewardedExtra(this@MainActivity)
+                                                PdfToolType.SIGN -> com.flashypdfkit.ads.UsageManager.grantSignRewardedExtra(this@MainActivity)
+                                                PdfToolType.PROTECT -> com.flashypdfkit.ads.UsageManager.consumeProtectUse(this@MainActivity)
+                                                else -> {}
                                             }
+                                            if (target != null) {
+                                                selectedUris.clear()
+                                                activeToolState.value = target
+                                            }
+                                        },
+                                        onFailed = { reason ->
+                                            isLoadingRewardedAd = false
+                                            Toast.makeText(this@MainActivity, reason, Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                            )
+                        }
+
+                        if (isLoadingRewardedAd) {
+                            Dialog(onDismissRequest = {}) {
+                                Surface(
+                                    shape = AppShapes.lg,
+                                    color = if (isDark) ActivePalette.DarkSurface else ActivePalette.LightSurface,
+                                    border = BorderStroke(1.dp, if (isDark) ActivePalette.DarkBorder else ActivePalette.LightBorder)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(color = ActivePalette.Primary)
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = "Loading Video Ad...",
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isDark) ActivePalette.DarkTextPrimary else ActivePalette.LightTextPrimary
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Preparing reward video. Please wait a moment...",
+                                            fontSize = 11.sp,
+                                            color = if (isDark) ActivePalette.DarkTextMuted else ActivePalette.LightTextMuted
                                         )
                                     }
                                 }
-                            )
+                            }
                         }
                     }
                 }
