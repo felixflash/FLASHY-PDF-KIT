@@ -1,5 +1,6 @@
 package com.flashypdfkit.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Card
@@ -43,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -311,6 +314,22 @@ fun SettingsScreen(
                 icon = Icons.Default.Info,
                 title = "App Version",
                 trailingText = "v2.5.0 (Build 250)"
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val context = LocalContext.current
+            SettingsItem(
+                icon = Icons.Default.Share,
+                title = "Share App",
+                onClick = {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "FlashyPDF")
+                        putExtra(Intent.EXTRA_TEXT, "Check out FlashyPDF for offline PDF editing! https://play.google.com/store/apps/details?id=${context.packageName}")
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "Share app via"))
+                }
             )
 
             Spacer(modifier = Modifier.height(32.dp))
